@@ -61,7 +61,6 @@ warnings.simplefilter(action='ignore', category=ConvergenceWarning)
 warnings.filterwarnings(action='ignore', category=pd.errors.SettingWithCopyWarning)
 
 df=pd.read_csv('hitters.csv')
-# TARGET="Salary"
 
 ### Overall Picture
 
@@ -110,10 +109,8 @@ cat_cols, num_cols, cat_but_car = grab_col_names(df)
 ### Analysis of Categorical Variables
 
 def cat_summary(dataframe, col_name, plot=False):
-    print("###")
     print(pd.DataFrame({col_name: dataframe[col_name].value_counts(),
                         "Ratio":100*dataframe[col_name].value_counts()/len(dataframe)}))
-    print("###")
     if plot:
         sns.countplot(x=dataframe[col_name], data=dataframe)
         plt.show(block=True)
@@ -157,13 +154,12 @@ plt.show(block=True)
 # Correlation with the final state of the variables
 plt.figure(figsize=(45,45))
 corr=df[num_cols].corr()
-sns.set_context("talk", font_scale=1.5)
 mask=np.triu(np.ones_like(corr,dtype=bool))
 sns.heatmap(df[num_cols].corr(),mask=mask, cmap="coolwarm", vmax=1, center=0,
             square=True, linewidths=.5, annot=True, annot_kws={"size": 20})
 plt.show(block=True)
 
-def find_correlation(dataframe, numeric_cols, corr_limit=0.60):
+def find_correlation(dataframe, numeric_cols, corr_limit=0.50):
     high_correlation=[]
     low_correlation=[]
     for col in numeric_cols:
@@ -179,6 +175,76 @@ def find_correlation(dataframe, numeric_cols, corr_limit=0.60):
     return low_correlation, high_correlation
 
 low_corrs, high_corrs = find_correlation(df, num_cols)
+
+### Outliers
+
+sns.boxplot(x=df["Salary"], data=df)
+plt.show(block=True)
+
+for col in df[num_cols]:
+    sns.boxplot(x=df[col], data=df)
+    plt.show(block=True)
+
+def outlier_thresholds(dataframe, col_name, q1=0.10, q3=0.90):
+    quartile1=dataframe[col_name].quantile(q1)
+    quartile3=dataframe[col_name].quantile(q3)
+    interquantile_range=quartile3-quartile1
+    up_limit=quartile3 + 1.5*interquantile_range
+    low_limit=quartile1 - 1.5*interquantile_range
+    return low_limit, up_limit
+
+def check_outliers(dataframe, col_name):
+    low_limit, up_limit=outlier_thresholds(dataframe, col_name)
+    if dataframe[(dataframe[col_name] > up_limit) | (dataframe[col_name] < low_limit)].any(axis=None):
+        return True
+    else:
+        return False
+
+def replace_with_thresholds(dataframe, variable):
+    low_limit, up_limit=outlier_thresholds(dataframe, variable)
+    dataframe.loc[(dataframe[variable] < low_limit), variable] = low_limit
+    dataframe.loc[(dataframe[variable] > up_limit), variable] = up_limit
+
+for col in num_cols:
+    print(col, check_outliers(df, col))
+
+for col in num_cols:
+    if check_outliers(df, col):
+        replace_with_thresholds(df, col)
+
+### Missing Values
+
+def missing_values_table(dataframe, na_name=False):
+    na_columns=[col for col in dataframe.columns if dataframe[col].isnull().sum()>0]
+    n_miss=dataframe[na_columns].isnull().sum().sort_values(ascending=False)
+    ratio=(dataframe[na_columns].isnull().sum()/dataframe.shape[0]*100).sort_values(ascending=False)
+    missinf_df=pd.concat([n_miss, np.round(ratio,2)], axis=1, keys=['n_miss', 'ratio'])
+    print(missinf_df, end="\n\n")
+    if na_name:
+        return na_columns
+
+missing_values_table(df)
+
+from sklearn.impute import KNNImputer
+
+def impute_missing_values(dataframe):
+    df1 = df.copy()
+    df1.head()
+    cat_cols, num_cols, cat_but_car = grab_col_names(df1)
+    dff=pd.get_dummies(df1[cat_cols + num_cols], drop_first=True)
+    scaler= RobustScaler()
+    dff=pd.DataFrame(scaler.fit_transform(dff), columns=dff.columns)
+    imputer=KNNImputer(n_neighbors=5)
+    dff=pd.DataFrame(imputer.fit_transform(dff), columns=dff.columns)
+    dff=pd.DataFrame(scaler.inverse_transform(dff), columns=dff.columns)
+    return dff
+
+df1=impute_missing_values(df)
+
+df1.head()
+
+print(df1.head())
+print(df1.isnull().sum())
 
 
 
