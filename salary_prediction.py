@@ -246,6 +246,92 @@ df1.head()
 print(df1.head())
 print(df1.isnull().sum())
 
+### Feature Extraction
+
+#new_num_cols=[col for col in num_cols if col != "Salary"]
+#df1[new_num_cols]=df1[new_num_cols]+0.0000000001
+
+
+#df1["Hits_Success"] = (df1["Hits_Success"]/df1["AtBat"])*100
+df1["NEW_RBI"] = df1["RBI"] / df1["CRBI"]
+df1['NEW_Walks'] = df1['Walks'] / df1['CWalks']
+df1 ['NEW_PutOuts'] = df1['PutOuts'] * df1['Years']
+df1 ['NEW_Hits'] = df1['Hits'] / df1['CHits'] + df1['Hits']
+df1 ["NEW_CRBI*CATBAT"] = df1['CRBI'] * df1['CAtBat']
+df1["NEW_Chits"] = df1["CHits"] / df1 ["Years"]
+df1 ["NEW_CHmRun"] = df1 ["CHmRun"] * df1 ["Years"]
+df1 ["NEW_CRuns"] = df1["CRuns"] / df1["Years"]
+df1 ["CHits"] = df1["CHits"] * df1["Years"]
+df1 ["NEW_RW"] = df1["RBI"] * df1["Walks"]
+df1 ["NEW_RBWALK"] = df1["RBI"] / df1["Walks"]
+df1 ["NEW_CH_CB"] = df1["CHits"] / df1["CAtBat"]
+df1 ["NEW_CHm_CAT"] = df1["CHmRun"] / df1["CAtBat"]
+df1 ["NEW_Diff_AtBat"] = df1["AtBat"] - (df1["CAtBat"] / df["Years"])
+df1 ["NEW_Diff_Hits"] = df1["Hits"] - (df1["CHits"] / df["Years"])
+df1 ["NEW_Diff_HmRun"] = df1["HmRun"] - (df1["CHmRun"] / df["Years"])
+df1 ["NEW_Diff_Runs"] = df1["Runs"] - (df1["CRuns"] / df["Years"])
+df1 ["NEW_Diff_RBI"] = df1["RBI"] - (df1["CRBI"] / df["Years"])
+df1 ["NEW_Diff_Walks"] = df1["Walks"] - (df1["CWalks"] / df["Years"])
+
+
+def feature_ext(df1):
+    cat_cols, num_cols, cat_but_car = grab_col_names(df1)
+    new_num_cols = [col for col in num_cols if col != "Salary"]
+    df1[new_num_cols]=df1[new_num_cols]+0.0000000001
+
+
+
+### One_Hot Encoding
+
+cat_cols, num_cols, cat_but_car = grab_col_names(df1)
+
+def one_hot_encoder(dataframe, categorical_cols, drop_first=False):
+    dataframe=pd.get_dummies(dataframe, columns=categorical_cols, drop_first=drop_first)
+    for col in dataframe.columns:
+        if dataframe[col].dtype == 'bool':
+            dataframe[col] = dataframe[col].astype(int)
+    return dataframe
+
+df1 = one_hot_encoder(df1, cat_cols, drop_first=True)
+
+### Feature Scaling
+
+cat_cols, num_cols, cat_but_car = grab_col_names(df1)
+
+from scipy import stats
+
+#def check_normality(dataframe, num_cols, plot=False):
+
+def feature_scaling(dataframe, num_cols):
+    scaler = StandardScaler()
+    cat_cols, num_cols, cat_but_car = grab_col_names(dataframe)
+    num_cols= [col for col in num_cols if col not in ["Salary"]]
+    dataframe[num_cols] = scaler.fit_transform(df1[num_cols])
+    return dataframe
+
+### Correlation Analysis
+
+df1[num_cols].corr(method="spearman")
+
+fig.ax = plt.subplots(figsize=(25,10))
+sns.heatmap(df1.corr(), annot=True, linewidths=.5, ax=ax)
+plt.show(block=True)
+
+corr_matrix = df1.corr()
+print(corr_matrix)
+
+high_corr_threshold=0.95
+high_corr_features=set()
+for i in range(len(corr_matrix.columns)):
+    for j in range (i):
+        if abs(corr_matrix.iloc[i,j])>high_corr_threshold:
+            colname=corr_matrix.columns[i]
+            high_corr_features.add(colname)
+
+print(high_corr_features)
+
+
+
 
 
 
